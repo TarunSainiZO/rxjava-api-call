@@ -42,7 +42,7 @@ class MyViewModel : ViewModel() {
                     e.printStackTrace()
                     e.message?.toString()?.let { Log.d("output in rx", it) }
                     invalid.value = false
-                    invalid.value = false
+                    invalid.value = true
                 }
 
                 override fun onNext(gitHubRepos: List<GitHubRepo?>?) {
