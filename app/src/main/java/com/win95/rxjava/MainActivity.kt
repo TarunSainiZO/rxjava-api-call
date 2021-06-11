@@ -2,8 +2,13 @@ package com.win95.rxjava
 
 import android.os.Bundle
 import android.util.Log
+import android.view.View
+import android.view.WindowManager
+import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ProgressBar
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -28,6 +33,9 @@ class MainActivity : AppCompatActivity() {
     val username: EditText
         get() = findViewById(R.id.username)
 
+    val progressBar: ProgressBar
+        get() = findViewById(R.id.progressBar)
+
     lateinit var subscription: Subscription
 
 
@@ -42,6 +50,8 @@ class MainActivity : AppCompatActivity() {
         search.setOnClickListener {
             val user = username.text
             if (user.isNotEmpty()) {
+                showProgoressBar()
+                username.onEditorAction(EditorInfo.IME_ACTION_DONE);
                 getRepo(user.toString())
             }
         }
@@ -54,6 +64,7 @@ class MainActivity : AppCompatActivity() {
             .getStarredRepos(user)
             ?.subscribeOn(Schedulers.io())
             ?.observeOn(AndroidSchedulers.mainThread())
+            ?.doOnNext { showProgoressBar() }
             ?.subscribe(object : Observer<List<GitHubRepo?>?> {
                 override fun onCompleted() {
                     Log.d("output in rx", "task completed")
@@ -62,19 +73,41 @@ class MainActivity : AppCompatActivity() {
                 override fun onError(e: Throwable) {
                     e.printStackTrace()
                     e.message?.toString()?.let { Log.d("output in rx", it) }
+                    hideProgressBar()
+                    githubAdapter.setDataInRV(emptyList())
+                    Toast.makeText(this@MainActivity,"Invalid username",Toast.LENGTH_SHORT).show()
                 }
 
                 override fun onNext(gitHubRepos: List<GitHubRepo?>?) {
                     githubAdapter.setDataInRV(gitHubRepos as List<GitHubRepo>)
                     Log.d("output in rx", "task OnNext $gitHubRepos")
+                    hideProgressBar()
                 }
             }) ?: return
     }
 
     override fun onDestroy() {
-        if(this::subscription.isInitialized && !subscription.isUnsubscribed()){
+        if (this::subscription.isInitialized && !subscription.isUnsubscribed()) {
             subscription.unsubscribe()
         }
         super.onDestroy()
+    }
+
+    fun hideProgressBar() {
+        progressBar.visibility = View.INVISIBLE
+        window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+    }
+
+    fun showProgoressBar() {
+        progressBar.visibility = View.VISIBLE
+        getWindow().setFlags(
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        )
+    }
+
+    override fun onBackPressed() {
+        super.onBackPressed()
+        hideProgressBar()
     }
 }
