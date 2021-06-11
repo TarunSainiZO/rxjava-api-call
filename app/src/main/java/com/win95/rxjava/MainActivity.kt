@@ -1,5 +1,6 @@
 package com.win95.rxjava
 
+import android.graphics.Color
 import android.os.Bundle
 import android.view.View
 import android.view.WindowManager
@@ -42,6 +43,7 @@ class MainActivity : AppCompatActivity() {
         recyclerView.adapter = githubAdapter
 
         viewModel.list.observe(this,{
+            username.setTextColor(Color.BLACK)
             githubAdapter.setDataInRV(it as List<GitHubRepo>)
             hideProgressBar()
         })
@@ -50,6 +52,7 @@ class MainActivity : AppCompatActivity() {
             if(it == false){
                 hideProgressBar()
                 githubAdapter.setDataInRV(emptyList())
+                username.setTextColor(Color.RED)
                 Toast.makeText(this@MainActivity,"Invalid username",Toast.LENGTH_SHORT).show()
             }
         })
