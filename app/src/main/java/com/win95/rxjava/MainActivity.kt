@@ -1,7 +1,6 @@
 package com.win95.rxjava
 
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
@@ -10,87 +9,60 @@ import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.win95.rxjava.adapter.GithubAdapter
-import rx.Observer
-import rx.Subscription
-import rx.android.schedulers.AndroidSchedulers
-import rx.schedulers.Schedulers
 
 
 class MainActivity : AppCompatActivity() {
 
     lateinit var githubAdapter: GithubAdapter
-    lateinit var gitHubRepo: List<GitHubRepo>
-
-    val recyclerView: RecyclerView
+    lateinit var viewModel: MyViewModel
+    private val recyclerView: RecyclerView
         get() = findViewById(R.id.recyclerView)
 
-    val search: Button
+    private val search: Button
         get() = findViewById(R.id.search)
 
-    val username: EditText
+    private val username: EditText
         get() = findViewById(R.id.username)
 
-    val progressBar: ProgressBar
+    private val progressBar: ProgressBar
         get() = findViewById(R.id.progressBar)
-
-    lateinit var subscription: Subscription
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        gitHubRepo = arrayListOf()
+
+        viewModel = ViewModelProvider(this).get(MyViewModel::class.java)
+
         recyclerView.layoutManager = LinearLayoutManager(this@MainActivity)
-        githubAdapter = GithubAdapter(this, gitHubRepo as ArrayList<GitHubRepo>)
+        githubAdapter = GithubAdapter(this, viewModel.getDataRepo() as MutableList<GitHubRepo>)
         recyclerView.adapter = githubAdapter
+
+        viewModel.list.observe(this,{
+            githubAdapter.setDataInRV(it as List<GitHubRepo>)
+            hideProgressBar()
+        })
+
+        viewModel.invalid.observe(this,{
+            if(it == false){
+                hideProgressBar()
+                githubAdapter.setDataInRV(emptyList())
+                Toast.makeText(this@MainActivity,"Invalid username",Toast.LENGTH_SHORT).show()
+            }
+        })
 
         search.setOnClickListener {
             val user = username.text
             if (user.isNotEmpty()) {
                 showProgoressBar()
                 username.onEditorAction(EditorInfo.IME_ACTION_DONE);
-                getRepo(user.toString())
+                viewModel.getRepo(user.toString())
             }
         }
 
-    }
-
-    private fun getRepo(user: String) {
-
-        subscription = GitHubClient.getInstance()
-            .getStarredRepos(user)
-            ?.subscribeOn(Schedulers.io())
-            ?.observeOn(AndroidSchedulers.mainThread())
-            ?.doOnNext { showProgoressBar() }
-            ?.subscribe(object : Observer<List<GitHubRepo?>?> {
-                override fun onCompleted() {
-                    Log.d("output in rx", "task completed")
-                }
-
-                override fun onError(e: Throwable) {
-                    e.printStackTrace()
-                    e.message?.toString()?.let { Log.d("output in rx", it) }
-                    hideProgressBar()
-                    githubAdapter.setDataInRV(emptyList())
-                    Toast.makeText(this@MainActivity,"Invalid username",Toast.LENGTH_SHORT).show()
-                }
-
-                override fun onNext(gitHubRepos: List<GitHubRepo?>?) {
-                    githubAdapter.setDataInRV(gitHubRepos as List<GitHubRepo>)
-                    Log.d("output in rx", "task OnNext $gitHubRepos")
-                    hideProgressBar()
-                }
-            }) ?: return
-    }
-
-    override fun onDestroy() {
-        if (this::subscription.isInitialized && !subscription.isUnsubscribed()) {
-            subscription.unsubscribe()
-        }
-        super.onDestroy()
     }
 
     fun hideProgressBar() {
@@ -110,4 +82,5 @@ class MainActivity : AppCompatActivity() {
         super.onBackPressed()
         hideProgressBar()
     }
+
 }

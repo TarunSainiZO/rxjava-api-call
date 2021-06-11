@@ -6,6 +6,6 @@ import rx.Observable
 
 
 interface GitHubService {
-    @GET("users/{user}/starred")
+    @GET("users/{user}/repos")
     fun getStarredRepositories(@Path("user") userName: String?): Observable<List<GitHubRepo?>?>?
 }
